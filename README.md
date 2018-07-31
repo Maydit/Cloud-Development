@@ -33,13 +33,13 @@ After a rude awakening to aliasing, I produced this beauty:
 
 Ok, looks good, after that I was completely done. Jk jk. These clouds look like sausages or pillows, but really who cares? Mik cares. So I must do better. After a rework to the density function that destroyed the lighting calculations, I arrived at this:
 
-![Cool and good](./third_clouds.png)
+![Cool and good](./images/third_clouds.png)
 
 It was fully customizable, too, with a day and night cycle. (Prior to this there was only an atmosphere). As uniforms (shader inputs), there was cloud height, thickness, absorbtion, coverage, and darkness as you can still see on the github page. This was fully awesome, so I worked hard to implement it in the codebase and merge it in.
 
 One successful merge later and it was in the codebase. Next, I fixed the lighting and tweaked the blending to give some truly fluffy clouds, with accurate contours:
 
-![Good and cool](./fourth_clouds.png)
+![Good and cool](./images/fourth_clouds.png)
 
 Good enough stuff, and all done in about a month, including the time to learn glsl/js and fail a lot. It was at this point I took a break from developing clouds to work on other skybox related code.
 
