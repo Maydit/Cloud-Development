@@ -7,7 +7,7 @@ This summer (the summer of 2018), I was invited for an internship by one of my c
 
 Ok seems easy right, we've all seen clouds: 
 
-![Cloud :o](./images/cloud_ref1.png) ![Cloud :O](./images/cloud_ref2.png) ![Cloud! :c](./images/cloud_ref3.jpg)
+![Cloud :o](./images/clouds/cloud_ref1.png) ![Cloud :O](./images/clouds/cloud_ref2.png) ![Cloud! :c](./images/clouds/cloud_ref3.jpg)
 
 ## Cool.
 
@@ -23,23 +23,23 @@ This raymarcher does what the useful reference sources do and samples a [perlin 
 
 At a first test, this produced some beautiful clouds:
 
-![fuck](./images/first_clouds.png)
+![fuck](./images/clouds/1.png)
 
 After a rude awakening to aliasing, I produced this beauty:
 
-![I cry evertim](./images/second_clouds.png)
+![I cry evertim](./images/clouds/2.png)
 
 ## Packing up
 
 Ok, looks good, after that I was completely done. Jk jk. These clouds look like sausages or pillows, but really who cares? Mik cares. So I must do better. After a rework to the density function that destroyed the lighting calculations, I arrived at this:
 
-![Cool and good](./images/third_clouds.png)
+![Cool and good](./images/clouds/3.png)
 
 It was fully customizable, too, with a day and night cycle. (Prior to this there was only an atmosphere). As uniforms (shader inputs), there was cloud height, thickness, absorbtion, coverage, and darkness as you can still see on the github page. This was fully awesome, so I worked hard to implement it in the codebase and merge it in.
 
 One successful merge later and it was in the codebase. Next, I fixed the lighting and tweaked the blending to give some truly fluffy clouds, with accurate contours:
 
-![Good and cool](./images/fourth_clouds.png)
+![Good and cool](./images/clouds/4.png)
 
 Good enough stuff, and all done in about a month, including the time to learn glsl/js and fail a lot. It was at this point I took a break from developing clouds to work on other skybox related code.
 
@@ -66,7 +66,7 @@ This gave a rundown of 10ms per frame being used to compute the atmospheric scat
 
 Looking at the pipeline, we can see why this is:
 
-![euuuugh](./images/unoptimized_pipeline.png)
+![euuuugh](./images/etc/unoptimized_pipeline.png)
 
 With Mik's infinite knowledge there were several clear optimizations:
 
@@ -99,7 +99,7 @@ Useful tip. But how? For this I looked to the greats, and I don't mean shadertoy
 
 This is what the pipeline looked like after this series of optimizations:
 
-![yeeeet](./images/optimized_pipeline)
+![yeeeet](./images/etc/optimized_pipeline)
 
 And these were the timings:
 
@@ -110,9 +110,9 @@ And these were the timings:
 | Cloud lighting | 7 |
 | Total | 10.5 |
 
-![Innit a beaut?](.images/fifth_clouds.png)
+![Innit a beaut?](./images/clouds/5.png)
 
-![or nah](./images/sixth_clouds.png)
+![or nah](./images/clouds/6.png)
 
 ## What's left?
 
@@ -120,6 +120,32 @@ At this point, the clouds were almost done. The only things left were
 
  - Readd wind
  - Make the clouds more dynamic
- - Add lighting to the clouds
+ - Add lighting and coloring to the clouds
 
 but honestly if the clouds were left in that PR it would have been fine.
+
+Not really, those clouds look so bad. There's banding and they're just white... To fix this I added the colors, which also reduced the banding drastically. You can read about the coloring in depth [here](./read-more/lighting.md). For wind, because we previously assumed that the clouds would not move, we now have to update the cloud positions. Luckily, this can be amortized using two framebuffers that are swapped once every 100 frames and updated using the [scissor](https://github.com/regl-project/regl/blob/gh-pages/API.md#scissor) property. Making the clouds more dynamic was a more difficult task. I tried several approaches: 
+
+First, I tried updating single pixels of the noise texture gradually. The idea here was that the perlin noise function reads from a 256 x 256 texture of random ints (0-255), so we can increment or decrement one of these bits to change the noise source and linearly smooth between the old and the new. This seemed like it would work in theory and was implemented using two framebuffers, one with the previous noise and one with the next noise. For some reason though, the changes in the cloud shapes were discontinuous. If anyone reading this can figure out why this happened please raise an issue or ask for more details.
+
+Next, I tried linearly smoothing within the shader using offsets, but this proved too challenging to figure out, so I went to for the following.
+
+Last approach: thank stubbe for creating [this](https://www.shadertoy.com/view/XltSWj), which does exactly what I was looking for. The only downside was that I would have to decouple the noise from the other textures, as this noise requires four channels. It only takes one read compared to the two reads I was doing before, so it was a net increase in speed.
+
+This gives the following pipeline:
+
+![finna pipeline](./images/etc/final_pipeline.png)
+
+With all of these changes and the clouds looking pretty sweet - 
+
+![nice](./images/clouds/final_day.png)
+
+![cool and gooder](./images/clouds/final_night.png)
+
+![wow sunsets](./images/clouds/final_sunset.png)
+
+I relaxed and implemented some bonus minecraft clouds too.
+
+![nice and voxely](./images/clouds/minecraft.png)
+
+At the end of the day, clouds are stupid. Rendering fake clouds is even stupider. But here we are after two months of this internship. Here's what I can say for those of you looking to implement clouds: hack it however you can, or do the opposite and go for extreme fidelity. There are many resources you can use to help you [1 - HZD](http://killzone.dl.playstation.net/killzone/horizonzerodawn/presentations/Siggraph15_Schneider_Real-Time_Volumetric_Cloudscapes_of_Horizon_Zero_Dawn.pdf) [2 - Nubis](https://d1z4o56rleaq4j.cloudfront.net/downloads/assets/Nubis-Authoring-Realtime-Volumetric-Cloudscapes-with-the-Decima-Engine-Final.pdf?mtime=20170807141817) [3 - Frostbite](https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016-pbs-frostbite-sky-clouds-new.pdf) [4 - Basic stuff](http://www.cse.chalmers.se/~uffe/xjobb/RurikH%C3%B6gfeldt.pdf). Of course, some of this stuff may be outdated now. Lastly, don't forget to look outside for inspiration too, some of the most productive minutes of development were formed looking out of a didi.
