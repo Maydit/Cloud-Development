@@ -7,7 +7,7 @@ This summer (the summer of 2018), I was invited for an internship by one of my c
 
 Ok seems easy right, we've all seen clouds: 
 
-[Cloud :o](./images/cloud_ref1.png) [Cloud :O](./images/cloud_ref2.png) [Cloud! :c](./images/cloud_ref3.jpg)
+![Cloud :o](./images/cloud_ref1.png) ![Cloud :O](./images/cloud_ref2.png) ![Cloud! :c](./images/cloud_ref3.jpg)
 
 #Cool.
 
@@ -23,11 +23,11 @@ This raymarcher does what the useful reference sources do and samples a [perlin 
 
 At a first test, this produced some beautiful clouds:
 
-[fuck](./images/first_clouds.png)
+![fuck](./images/first_clouds.png)
 
 After a rude awakening to aliasing, I produced this beauty:
 
-[I cry evertim](./images/second_clouds.png)
+![I cry evertim](./images/second_clouds.png)
 
 #Packing up
 
