@@ -3,7 +3,7 @@ My process in writing a skybox with limited experience
 
 ... in China. 
 
-This summer (the summer of 2018), I was invited for an internship by one of my classmates at RPI, [Yuze Ma](https://github.com/bobmayuze) at the Chinese company [Codemao](codemao.cn). Naturally, going overseas without understanding even 一点中文 was a great idea. So there I was, in China, and assigned to the graphics team of a game engine under supervision of [Mikola Lysenko](https://github.com/mikolalysenko). He provided me one simple task: Make clouds. <font size='5'>[Skip the cloud bs and read about China stuff](#china)</font>
+This summer (the summer of 2018), I was invited for an internship by one of my classmates at RPI, [Yuze Ma](https://github.com/bobmayuze) at the Chinese company [Codemao](codemao.cn). Naturally, going overseas without understanding even 一点中文 was a great idea. So there I was, in China, and assigned to the graphics team of a game engine under supervision of [Mikola Lysenko](https://github.com/mikolalysenko). He provided me one simple task: Make clouds. <font size='5'>[Skip the cloud bs and read about China stuff](./read-more/china.md)</font>
 
 Ok seems easy right, we've all seen clouds: 
 
@@ -52,3 +52,76 @@ This integration gives enough information to calculate the lightmaps at 64 prede
 ## Back to the cloudz
 
 This intermission gave the dev team enough time to complain about one small oversight: efficiency. My clouds, however beautiful they may have been, took ***100ms per frame*** to calculate along with the skybox. If you've worked on or played a game before you know there should be 60 frames per second, and quick maffs tells us that 100ms per frame will give us ***10*** frames per second. So WTF.
+
+To fix this issue, I had to see exactly what was going on and what my pipeline looked like. So I took a simple [regl gpu profiler](https://github.com/Erkaman/regl-stats-widget/blob/master/index.js), enabled the firefox timer extension that was disabled due to timing attacks (thanks hackers), and stared at my laggy clouds.
+
+This gave a rundown of 10ms per frame being used to compute the atmospheric scattering and the other 90 being used to calculate the clouds themselves. By turning off the secondary ray for lighting, the clouds shapes themselves took 30 of these ms. For those who enjoy tables:
+
+| Element | milliseconds per frame |
+| :------- | -------------: |
+| Sky color | 10 |
+| Cloud shape | 30 |
+| Cloud lighting | 60 |
+| :------ | -------------: |
+| Total | 100 |
+
+Looking at the pipeline, we can see why this is:
+
+![euuuugh](./images/unoptimized_pipeline.png)
+
+With Mik's infinite knowledge there were several clear optimizations:
+
+ - Bake the sky color
+ - Squash the textures
+ - Precompute the cloud positions
+ - Do the lighting better
+
+Thanks Mik. 
+
+### Baking the sky color
+
+Since the sky color only updates when the sun moves, not every frame, we can simply bake the sky color into a texture and update it periodically. This is pretty simple with the use of [framebuffers](https://github.com/regl-project/regl/blob/gh-pages/API.md#framebuffers). This gave an improvement in the sky color calculation, reducing the time per frame from 10ms to 0.5ms when the framebuffer is not being updated and 2.5 ms when the framebuffer is being updated. The loss in quality is negligable and of course the framebuffer update can be [amortized](https://en.wikipedia.org/wiki/Amortized_analysis).
+
+### Squashing the textures
+
+This was a pretty simple fix: the noise function only uses the R channel of the texture, the moon is greyscale, and the stars only use the alpha channel and a blue channel for twinkling, so we can compress these four textures into one. This was probably the greatest time save, bringing the cloud rendering from 90ms per frame to about 30ms.
+
+### Precomputing the cloud positions
+
+Since the clouds are in the same spots (if we remove the wind), we can optimize them by precomputing which parts of the sky have clouds and only raytracing those parts. We use another framebuffer for this, which is created once and not updated. 
+
+## Etc
+
+In this time I also ripped out all the options for the clouds, people don't know what they want anyway. This reduced the uniforms significantly.
+
+### Doing the lighting better
+
+Useful tip. But how? For this I looked to the greats, and I don't mean shadertoy this time, but [Horizon Zero Dawn](http://killzone.dl.playstation.net/killzone/horizonzerodawn/presentations/Siggraph15_Schneider_Real-Time_Volumetric_Cloudscapes_of_Horizon_Zero_Dawn.pdf). HZD implements volumentric clouds very similarily to how I was implementing them, and also went through the troubles of optimizing them. For lighting specifically, they sample 6 times in a cone instead of marching a ray. I implemented this approach and suddenly the clouds were taking 10 ms to render. There are a few details in the full implementation of the lighting, so if you want to read all about the lighting specifically, [see this](./read-more/lighting.md)
+
+This is what the pipeline looked like after this series of optimizations:
+
+![yeeeet](./images/optimized_pipeline)
+
+And these were the timings:
+
+| Element | milliseconds per frame |
+| :------- | -------------: |
+| Sky color | 0.5 |
+| Cloud shape | 3 |
+| Cloud lighting | 7 |
+| :------ | -------------: |
+| Total | 10.5 |
+
+![Innit a beaut?](.images/fifth_clouds.png)
+
+![or nah](./images/sixth_clouds.png)
+
+## What's left?
+
+At this point, the clouds were almost done. The only things left were
+
+ - Readd wind
+ - Make the clouds more dynamic
+ - Add lighting to the clouds
+
+but honestly if the clouds were left in that PR it would have been fine.
