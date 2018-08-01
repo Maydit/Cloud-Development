@@ -89,7 +89,7 @@ This was a pretty simple fix: the noise function only uses the R channel of the 
 
 Since the clouds are in the same spots (if we remove the wind), we can optimize them by precomputing which parts of the sky have clouds and only raytracing those parts. We use another framebuffer for this, which is created once and not updated. 
 
-## Etc
+### Etc
 
 In this time I also ripped out all the options for the clouds, people don't know what they want anyway. This reduced the uniforms significantly.
 
