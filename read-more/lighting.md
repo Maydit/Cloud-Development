@@ -1,4 +1,4 @@
-#Lighting
+# Lighting
 
 Lighting for the clouds was a difficult problem to get exactly right. Looking at the images in the readme, you can see the lighting went through many iterations. In the beginning, the cloud implementation looked like this:
 
