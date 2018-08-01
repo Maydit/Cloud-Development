@@ -99,7 +99,7 @@ Useful tip. But how? For this I looked to the greats, and I don't mean shadertoy
 
 This is what the pipeline looked like after this series of optimizations:
 
-![yeeeet](./images/etc/optimized_pipeline)
+![yeeeet](./images/etc/optimized_pipeline.png)
 
 And these were the timings:
 
