@@ -179,9 +179,13 @@ float getLight(vec3 pos, vec3 sunDir, float time, sampler2D noiseSampler) {
 ```
 
 and clamped the light to be in \[0.0, 1.0\]. This uses the cheaper density function as described earlier. Some things to note are... 
+
 sunEquiv; this allows the clouds to be lit from below at sunrise and sunset. 
+
 Not using the random vector for the farther samples; it doesn't make a lot of difference.
+
 Multiplying the densities by seemingly random numbers; these are the weights. We value the detailed sample and the farthest sample heavily.
+
 ```d *= 0.6```; Made it look nicer.
 
 Anyway, this final result is obviously slower than the previous implementation, but it did look good.
