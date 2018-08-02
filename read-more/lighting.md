@@ -31,12 +31,16 @@ Let's assume TOTAL_STEPS = 32 and LIGHTING_STEPS = 10. At worst this algorithm w
 
 Unfortunately, this kind of fidelty doesn't even look good. There is intense banding and aliasing. To fix the aliasing I fudged the start position of the cloudPos and lightPos by a hash of the current time (ticks) and gl_FragCoord.xy, but even with this the banding was noticable and looked quite bad.
 
+### Hacks
+
 Somewhere along the development process I experimented with hacking in the lighting, by setting color equal to a mix between white and a nice looking color based on the value returned from the secondary ray march. This looked okay, and would have worked for a setting where it's always daytime. I attempted to generalize this approach to night time using something like
 ```
 //0.0 <= timeOfDay < 1.0 // 0.0 is sunrise and 0.5 is sunset
 sunBrightness = smoothstep(-0.05, 0.05, timeOfDay) - smoothstep(0.45, 0.55, timeOfDay);
 ```
 and modified the colors based on that, but this proved too tedious.
+
+### Better?
 
 Later on, during changes to the atmosphere pipeline, things got moved around and the code was as such:
 
@@ -133,3 +137,51 @@ Firstly, this removes banding for free because of the randomness and makes a nic
 It turned out that you can remove all except for the first and keep the shadows looking defined. The only problem with this is that there is not a drastic contour. This proved alright for uncolored clouds, and was what I kept until then. 
 
 Other things I tried to make this algorithm faster was using a cheaper density function for within the lighting. By adjusting the number of FBM octaves, I could reduce the number of texture calls by 2N for each octave removed. Removing one or two octaves kept the shadows looking decent, but the speed was fast enough using the previous improvement that in this iteration I decided to keep all octaves. Another technique outlined in the HZD paper was switching to a cheaper function once the opacity is greater than 0.3. This seemed promising, but all cheaper functions for calculating lighting did not look good enough, and if they did, using them as the initial function was a better option.
+
+### Adding the color to the clouds
+
+The 1 sample approach worked fine for uncolored clouds, but as soon as I added in the lighting (simply mix between a color from the atmosphere and the sun color based on the final lighting value, easily extends the clouds to HDR with some tweaking), the lack of shadows was apparent. After much experimentation, I finally settled on this:
+
+```
+vec3 noise(vec3 seed) {
+  return vec3(fract(seed.x + seed.z * 11.0174), fract(seed.y * 1.021321321 + seed.x * 0.13214), fract(seed.z * 7.31231 + seed.y * 1.321));
+}
+
+float Beer_Powder(float d) { //The Real-time Volumetric Cloudscapes of Horizon: Zero Dawn
+    d *= 0.6; // increase this if raining...
+    float beer = exp(-d);
+    float powder = 1.0 - exp(-d * 2.0);
+    return 2.0 * beer * powder;
+}
+
+float getLight(vec3 pos, vec3 sunDir, float time, sampler2D noiseSampler) {
+
+  const float sunEquiv = (1. - pow(DBCUTOFF, 1./15.)) / .7;
+  sunDir *= sunDir.y < -0.05 ? -1.0 : 1.0;
+  sunDir = normalize(sunDir - vec3(0, sunEquiv, 0));
+
+  vec3 n1 = noise(pos);
+
+  vec3 cone1 = 3.5 * D * sunDir + n1;
+  float sum = getDensityCheap(pos + cone1, time, noiseSampler) * 3.5;
+
+  vec3 med = 10.0 * D * sunDir - n1;
+  sum += getDensityCheap(pos + med, time, noiseSampler) * 1.5;
+
+  vec3 far = 20.0 * D * sunDir;
+  sum += getDensityCheap(pos + far, time, noiseSampler) * 2.0;
+    
+  vec3 farther = 50.0 * D * sunDir;
+  sum += getDensityCheap(pos + farther, time, noiseSampler) * 5.0;
+
+  return Beer_Powder(sum);
+}
+```
+
+and clamped the light to be in \[0.0, 1.0\]. This uses the cheaper density function as described earlier. Some things to note are... 
+sunEquiv; this allows the clouds to be lit from below at sunrise and sunset. 
+Not using the random vector for the farther samples; it doesn't make a lot of difference.
+Multiplying the densities by seemingly random numbers; these are the weights. We value the detailed sample and the farthest sample heavily.
+```d *= 0.6```; Made it look nicer.
+
+Anyway, this final result is obviously slower than the previous implementation, but it did look good.
